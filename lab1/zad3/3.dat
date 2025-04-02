@@ -1,0 +1,46 @@
+# Adrian Herda
+
+data;
+
+set ropa := b1 b2;
+set produkty := benz olej desty reszta;
+set produkty_krak := benz olej reszta;
+set cel_oleju := domowe ciezkie;
+set cel_desty := krak ciezkie;
+
+param koszt_ropy :=
+    b1  1300
+    b2  1500
+;
+
+param wydajnosc:    b1      b2 :=
+    benz            0.15    0.1
+    olej            0.4     0.35
+    desty           0.15    0.2
+    reszta          0.15    0.25
+;
+
+param wydajnosc_krak :=
+    benz            0.5
+    olej            0.2
+    reszta          0.06
+;
+
+param koszt_desty := 10;
+param koszt_krak := 20;
+
+param min_silnik := 200000;
+param min_domowe := 400000;
+param min_ciezkie := 250000;
+
+param siarka_max := 0.005;
+param desty_siarka :=
+    b1  0.002
+    b2  0.012
+;
+param krak_siarka :=
+    b1  0.003
+    b2  0.025
+;
+
+end;

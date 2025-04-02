@@ -1,0 +1,28 @@
+# Adrian Herda
+
+data;
+
+set Cities := opole brzeg nysa prudnik strzelce kozle raciborz;
+
+param:           shortI  shortII     surpI   surpII  :=
+    opole       0       2           7       0
+    brzeg       10      0           0       1
+    nysa        0       0           6       2
+    prudnik     4       0           0       10
+    strzelce    0       4           5       0
+    kozle       8       2           0       0
+    raciborz    0       1           0       0
+;
+
+param dist:
+                opole   brzeg   nysa    prudnik     strzelce    kozle   raciborz :=
+    opole       0.0     44.0    58.5    52.1        33.0        46.2    78.2
+    brzeg       44.0    0.0     53.8    73.9        78.2        88.1    128.0
+    nysa        58.5    53.8    0.0     27.7        84.8        73.5    87.7
+    prudnik     52.1    73.9    27.7    0.0         68.5        48.2    62.3
+    strzelce    33.0    78.2    84.8    68.5        0.0         25.9    61.2
+    kozle       46.2    88.1    73.5    48.2        25.9        0.0     35.4
+    raciborz    78.2    128.0   87.7    62.3        61.2        35.4    0.0
+;
+
+end;
