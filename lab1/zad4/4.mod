@@ -66,10 +66,8 @@ s.t. przerwa_obiad {d in 1..5}:
     + (sum {g in grupy_wf: dzien_wf[g] = d and czas_start_wf[g] >= 12 and czas_koniec_wf[g] > 14} (14 - czas_start_wf[g]) * wybrane_wf[g]) <= 1;
 
 # dodatkowe warunki
-# brak zajęć w środę
-s.t. wolna_sroda {g in grupy, z in zajecia : dzien[g,z] = 3} : wybrane[g,z] = 0;
-# brak zajęć w piątek
-s.t. wolny_piatek {g in grupy, z in zajecia : dzien[g,z] = 5} : wybrane[g,z] = 0;
+# brak zajęć w środę i piątek
+s.t. wolna_sroda {g in grupy, z in zajecia : dzien[g,z] = 3 or dzien[g,z] = 5} : wybrane[g,z] = 0;
 # zajęcia o preferencji nie mniejszej niż 5
 s.t. pkt_min_5 {g in grupy, z in zajecia : pkt[g,z] < 5 } : wybrane[g,z] = 0;
 

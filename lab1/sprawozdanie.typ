@@ -1,6 +1,6 @@
 #set heading(numbering: "1.")
 #set text(lang: "pl")
-#set text(font: "Libertinus math")
+#set text(font: "Libertinus Math")
 
 
 
@@ -26,7 +26,7 @@ gdzie:
 - $b_i = sum_(j=1)^n (1 / (i + j -1))$,   dla $i, j, = 1, ... , n$
 
 == Funkcja kosztu
-$ min c^T x $
+$ min c^T x = sum_(i = 1)^n c_i dot x_i $
 gdzie:
 - $c_i = sum_(j=1)^n (1 / (i + j -1))$,   dla $i, j, = 1, ... , n$
 
@@ -197,7 +197,130 @@ Całkowity koszt wyniósł $1345943600.87\$ $
 
 = Zadanie 4
 
-Zadanie polegało na znalezieniu optymalnego planu ćwiczen wedle godzin i ocen zajęć podanych w treści zadania. Dodatkowo w plan trzeba było zmieścić godzinną przerwę w godzinach 12 - 14 a także zajęcia sportowe conajmniej raz w tygodniu.
+Zadanie polegało na znalezieniu optymalnego planu ćwiczeń wedle godzin i ocen zajęć podanych w treści zadania. Dodatkowo w plan trzeba było zmieścić godzinną przerwę w godzinach 12 - 14 a także zajęcia sportowe co najmniej raz w tygodniu.
 
 == Model
+- $"Zaj" = {"algebra, analiza, fizyka, chemia_minerałów, chemia_organiczna"}$ - Zbiór wszystkich ćwiczeń
+- $"Gr" = {"gr1, gr2, gr3, gr4"}$ - grupy ćwiczeniowe z których można wybierać
+- $"Gr_wf" = {"gr1, gr2, gr3"}$ - grupy zajęć sportowych z których można wybierać
 
+=== Parametry
+- $"Start"_(z, g)$, $z in "Zaj", g in "Gr"$ - macierz zawierająca informacje na temat godzin o których zajęcia się zaczynały
+- $"Koniec"_(z, g)$, $z in "Zaj", g in "Gr"$ - macierz zawierająca informacje na temat godzin o których zajęcia się kończyły
+- $"Dzien"_(z, g) in [1,2,3,4,5]$, $z in "Zaj", g in "Gr"$ - macierz zawierająca informacje na temat dni w których zajęcia się odbywały
+- $"Pkt"_(z, g)$, $z in "Zaj", g in "Gr"$ - macierz zawierająca informacje na temat preferencji co do zajęć
+
+- $"Start_wf"_(z, g)$, $z in "Zaj", g in "Gr"$ - macierz zawierająca informacje na temat godzin o których zajęcia sportowe się zaczynały
+- $"Koniec_wf"_(z, g)$, $z in "Zaj", g in "Gr"$ - macierz zawierająca informacje na temat godzin o których zajęcia sportowe się kończyły
+- $"Dzien_wf"_(z, g) in [1,2,3,4,5]$, $z in "Zaj", g in "Gr"$ - macierz zawierająca informacje na temat dni w których zajęcia sportowe się odbywały
+
+=== Zmienne decyzyjne
+
+- $"Wybrane"_(z, g) in [0, 1]$, $z in "Zaj", g in "Gr"$ - Macierz określająca które zajęcia wybraliśmy
+  - $1$ - oznacza wybranie zajęć
+  - $0$ - oznacza nie wybranie zajęć
+
+- $"Wybrane_wf"_(z, g) in [0, 1]$, $z in "Zaj", g in "Gr"$ - Macierz określająca które zajęcia sportowe wybraliśmy
+  - $1$ - oznacza wybranie zajęć
+  - $0$ - oznacza nie wybranie zajęć
+
+=== Ograniczenia
+
++ Z każdego przedmiotu możemy wybrać tylko jedną grupę
+  $ forall_(z in "Zaj") (sum_(g in "Gr") "Wybrane"_g = 1) $
++ Z wf musimy wybrać minimalnie jedną grupę
+  $ sum_(g in "Gr_wf") "Wybrane_wf"_g >= 1 $
++ Możemy mieć maksymalnie 4h ćwiczeń dziennie
+  $ forall_(d in [5]) (sum_(g in "Gr", z in "Zaj", "Dzien"_(z, g) = d) ("Koniec"_(z,g) - "Start"_(z, g))<= 4) $
++ Zajęcia nie mogą się zaczynać w trakcie innych zajęć - sprawdzamy to poprzez porównywanie czasu rozpoczęcia i zakończenia par zajęć, jeśli czas rozpoczęcia jednych zajęć zawiera się w pomiędzy granicami innych zajęć to wybrać możemy co najwyżej jedne z nich
+  $ (forall_(z 1, z 2 in "Zaj"))(forall_(g 1, g 2 in "Gr")) \ ((z 1, g 1) != (z 2, g 2) and "Dzien"_(z 1, g 1) = "Dzien"_(z 2, g 2) and "Start"_(z 1, g 1) <= "Start"_(z 2, g 2) and "Start"_(z 2, g 2) <= "Koniec"_(z 1, g 1)) \ arrow.double.long "Wybrane"_(z 1, g 1) + "Wybrane"_(z 2, g 2) <= 1 $
++ Podobnie treningi nie mogą się zaczynać w trakcie ćwiczeń
+  $ (forall_(z in "Zaj"))(forall_(g in "Gr"))(forall_(g^"wf" in "Gr_wf")) \ ("Dzien"_(z, g) = "Dzien_wf"_(g^"wf") and "Start"_(z, g) <= "Start_wf"_(g^"wf") and "Start_wf"_(g^"wf") <= "Koniec"_(z, g)) \ arrow.double.long "Wybrane"_(z, g) + "Wybrane_wf"_(g^"wf") <= 1 $
++ Ani nie mogą się kończyć w trakcie ćwiczeń
+  $ (forall_(z in "Zaj"))(forall_(g in "Gr"))(forall_(g^"wf" in "Gr_wf")) \ ("Dzien"_(z, g) = "Dzien_wf"_(g^"wf") and "Start_wf"_(g^"wf") <= "Start"_(z, g) and "Start"_(z, g)) <= "Koniec_wf"_(g^"wf") \ arrow.double.long "Wybrane"_(z, g) + "Wybrane_wf"_(g^"wf") <= 1 $
++ Ćwiczenia muszą zostawić godzinę przerwy w godzinach 12-14 na obiad na stołówce
+  $
+  (forall_(d in [5])) \
+  sum_(g in "Gr", z in "Zaj", "Dzien"_(z, g) = d, "Start"_(z, g) < 12, "Koniec"_(z, g) <= 14)(("Koniec"_(z,g) - 12) dot "Wybrane"_(z,g)) + \
+  sum_(g in "Gr", z in "Zaj", "Dzien"_(z, g) = d, "Start"_(z, g) >= 12, "Koniec"_(z, g) <= 14)(("Koniec"_(z,g) - "Start"_(z,g)) dot "Wybrane"_(z,g)) + \
+  sum_(g in "Gr", z in "Zaj", "Dzien"_(z, g) = d, "Start"_(z, g) >= 12, "Koniec"_(z, g) > 14)((14 - "Start"_(z,g)) dot "Wybrane"_(z,g)) + \
+  sum_(g in "Gr_wf", "Dzien_wf"_(g) = d, "Start_wf"_(g) < 12, "Koniec_wf"_(g) <= 14)(("Koniec_wf"_g - 12) dot "Wybrane_wf"_(g)) + \
+  sum_(g in "Gr_wf", "Dzien_wf"_(g) = d, "Start_wf"_(g) >= 12, "Koniec_wf"_(g) <= 14)(("Koniec_wf"_g - "Start_wf"_(g)) dot "Wybrane_wf"_(g)) + \
+  sum_(g in "Gr_wf", "Dzien_wf"_(g) = d, "Start_wf"_(g) >= 12, "Koniec_wf"_(g) > 14)((14 - "Start_wf"_(g)) dot "Wybrane_wf"_(g)) <= 1
+  $
+
+=== Ograniczenia dodatkowe <ogr_dod>
++ Brak ćwiczeń w środy oraz 5
+  $ (forall_(g in "Gr", z in "Zaj")) ("Dzien"_(z, g) in {3, 5} arrow.double.long "Wybrane"_(z,g) = 0) $
++ Brak ćwiczeń o preferencji mniejszej niż 5
+  $ (forall_(g in "Gr", z in "Zaj")) ("Pkt"_(z, g) lt.eq 5 arrow.double.long "Wybrane"_(z,g) = 0) $
+
+== Funkcja kosztu
+
+Naszym celem jest zmaksymalizowanie wybieranie preferowanych ćwiczeń. W tym celu maksymalizujemy sumę preferencji wszystkich wybranych ćwiczeń
+
+$ max sum_(g in "Gr", z in "Zaj")("Pkt"_(z,g) dot "Wybrane"_(z,g)) $
+
+== Wyniki
+=== Bez dodatkowych warunków
+Bez dodatkowych warunków plan prezentuje się następująco:
+
+#align(center)[
+#table(
+  columns: 6,
+  align: center,
+    "" , "Pn." , "Wt." , "Śr." , "Cz." , "Pt.",
+    "8:00" , "chemia min. (I)" , "" , "" , "" , "",
+    "8:30" , "chemia min. (I)" , "" , "" , "" , "",
+    "9:00" , "chemia min. (I)" , "" , "" , "" , "",
+    "9:30" , "chemia min. (I)" , "" , "" , "" , "",
+    "10:00" , "" , "analiza (II)" , "algebra (III)" , "" , "",
+    "10:30" , "chemia org. (II)" , "analiza (II)" , "algebra (III)" , "" , "",
+    "11:00" , "chemia org. (II)" , "analiza (II)" , "algebra (III)" , "" , "",
+    "11:30" , "chemia org. (II)" , "analiza (II)" , "algebra (III)" , "" , "",
+    "12:00" , "lunch" , "lunch" , "lunch" , "lunch" , "lunch",
+    "12:30" , "lunch" , "lunch" , "lunch" , "lunch" , "lunch",
+    "13:00" , "trening" , "" , "" , "" , "",
+    "13:30" , "trening" , "" , "" , "" , "",
+    "14:00" , "trening" , "" , "" , "" , "",
+    "14:30" , "trening" , "" , "" , "" , "",
+    "15:00" , "" , "" , "" , "" , "",
+    "15:30" , "" , "" , "" , "" , "",
+    "16:00" , "" , "" , "" , "" , "",
+    "16:30" , "" , "" , "" , "" , "",
+    "17:00" , "" , "" , "" , "fizyka (IV)" , "",
+    "17:30" , "" , "" , "" , "fizyka (IV)" , "",
+    "18:00" , "" , "" , "" , "fizyka (IV)" , "",
+    "18:30" , "" , "" , "" , "fizyka (IV)" , "",
+    "19:00" , "" , "" , "" , "fizyka (IV)" , "",
+    "19:30" , "" , "" , "" , "fizyka (IV)" , "",
+)]
+
+Suma preferencji wynosi 37. Można by nawet dodać jeszcze jedne zajęcia sportowe w środę od 13:00 do 15:00 ale to nie jest już wymagane od solvera.
+
+=== Dodatkowe warunki
+
+Ograniczenia dodatkowe widoczne w @ogr_dod powodują zmiany w planie prezentujące się następująco:
+
+#align(center)[
+#table(
+  columns: 6,
+  align: center,
+    "" , "Pn." , "Wt." , "Śr." , "Cz." , "Pt.",
+    "8:00" , "" , "" , "" , "analiza (IV)" , "",
+    "8:30" , "" , "" , "" , "analiza (IV)" , "",
+    "9:00" , "" , "" , "" , "analiza (IV)" , "",
+    "9:30" , "" , "" , "" , "analiza (IV)" , "",
+    "10:00" , "" , "fizyka (II)" , "" , "" , "",
+    "10:30" , "chemia org. (II)" , "fizyka (II)" , "" , "" , "",
+    "11:00" , "chemia org. (II)" , "fizyka (II)" , "trening" , "" , "",
+    "11:30" , "chemia org. (II)" , "fizyka (II)" , "trening" , "" , "",
+    "12:00" , "lunch" , "fizyka (II)" , "trening" , "lunch" , "lunch",
+    "12:30" , "lunch" , "fizyka (II)" , "trening" , "lunch" , "lunch",
+    "13:00" , "algebra (I)" , "lunch" , "lunch" , "chemia min. (III)" , "",
+    "13:30" , "algebra (I)" , "lunch" , "lunch" , "chemia min. (III)" , "",
+    "14:00" , "algebra (I)" , "" , "" , "chemia min. (III)" , "",
+    "14:30" , "algebra (I)" , "" , "" , "chemia min. (III)" , ""
+)]
+
+W tym wypadku suma preferencji wynosi 28. Jest to znacznie mniej niż w poprzednim wypadku ale jej kosztem zapewniliśmy dwa wolne dni od ćwiczeń.
