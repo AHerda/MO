@@ -1,6 +1,6 @@
 #set heading(numbering: "1.")
 #set text(lang: "pl")
-#set text(font: "Libertinus Math")
+#set text(font: "Libertinus math")
 
 
 
@@ -187,10 +187,17 @@ $ min sum_(r in R) ("ropa"_r * (C_r + C R_1) + C R_2 * "desty"_(r, "krak")) $
 == Wyniki
 
 Optymalnym rozwiązaniem okazuje się zakup wyłącznie tańszej ropy B1. Ta ropa nie dość że jest tańsza w kupnie jak i w obróbce ale ma również mniejszą zawartość siarki.
-- Kupujemy $1225388.08$ ton ropy B1
-- $393523.28$ ton oleju z destylacji idzie na cele paliw olejowych
-- $96631.95$ ton oleju z destylacji idzie na cele paliw ciężkich
-- $32383.575$ ton destylatu idzie do krakowania
-- $151424.64$ ton destylatu idzie na cele paliw ciężkich
+- Kupujemy $1026030.37$ ton ropy B1
+- $381561.37$ ton oleju z destylacji idzie na cele paliw olejowych
+- $28850.325$ ton oleju z destylacji idzie na cele paliw ciężkich
+- $91190.89$ ton destylatu idzie do krakowania
+- $61713.67$ ton destylatu idzie na cele paliw ciężkich
 
-Całkowity koszt wyniósł $1605906060.10\$ $
+Całkowity koszt wyniósł $1345943600.87\$ $
+
+= Zadanie 4
+
+Zadanie polegało na znalezieniu optymalnego planu ćwiczen wedle godzin i ocen zajęć podanych w treści zadania. Dodatkowo w plan trzeba było zmieścić godzinną przerwę w godzinach 12 - 14 a także zajęcia sportowe conajmniej raz w tygodniu.
+
+== Model
+

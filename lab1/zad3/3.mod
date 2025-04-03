@@ -59,9 +59,9 @@ s.t. domowe_suma: sum {r in ropa} (
 # minimalne ograniczenie produkcji paliw ciężkich
 s.t. ciezkie_suma: sum {r in ropa} (
     olej[r, "ciezkie"]
-    + desty[r, "krak"] * wydajnosc_krak["reszta"]
     + desty[r, "ciezkie"]
-    + wydajnosc["reszta", r]
+    + desty[r, "krak"] * wydajnosc_krak["reszta"]
+    + ilosc_ropy[r] * wydajnosc["reszta", r]
 ) >= min_ciezkie;
 
 # maksymaln ograniczenie siarkiw  paliwie
