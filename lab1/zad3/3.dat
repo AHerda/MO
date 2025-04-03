@@ -2,6 +2,7 @@
 
 data;
 
+# Zbiory dla ułatwienia zapisu
 set ropa := b1 b2;
 set produkty := benz olej desty reszta;
 set produkty_krak := benz olej reszta;
@@ -13,6 +14,7 @@ param koszt_ropy :=
     b2  1500
 ;
 
+# Wydajność destylacji
 param wydajnosc:    b1      b2 :=
     benz            0.15    0.1
     olej            0.4     0.35
@@ -20,19 +22,23 @@ param wydajnosc:    b1      b2 :=
     reszta          0.15    0.25
 ;
 
+# Wydajność krakowania destylatu
 param wydajnosc_krak :=
     benz            0.5
     olej            0.2
     reszta          0.06
 ;
 
+# Koszty destylacji i krakowania jak podane w zadnaiu
 param koszt_desty := 10;
 param koszt_krak := 20;
 
+# Minmalne ograniczenia produkcji
 param min_silnik := 200000;
 param min_domowe := 400000;
 param min_ciezkie := 250000;
 
+# Ograniczenia i parmaetry zwiazane z siarką
 param siarka_max := 0.005;
 param desty_siarka :=
     b1  0.002

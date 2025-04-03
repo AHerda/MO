@@ -1,6 +1,6 @@
 # Adrian Herda
 
-# Parametry modelu
+# --- Parametry modelu ---
 set Cities;
 
 param shortI{c in Cities} >= 0;
@@ -10,19 +10,21 @@ param surpII{c in Cities} >= 0;
 
 param dist{c1 in Cities, c2 in Cities} >= 0;
 
-# Zmienne decyzyjne
+# --- Zmienne decyzyjne ---
+# ilość przeniesionych dźwigów typu I
 var movI{c1 in Cities, c2 in Cities} >= 0;
+# ilość przeniesionych dźwigów typu II
 var movII{c1 in Cities, c2 in Cities} >= 0;
 # przemieszczenie dzwigow typu II uzywanych jako dzwigi typu I
 var movIII{c1 in Cities, c2 in Cities} >= 0;
 
-# Funkcja kosztu
+# --- Funkcja kosztu ---
 minimize cost_func:
     sum{c1 in Cities, c2 in Cities} (
         (dist[c1, c2] * movI[c1,c2]) + (1.2 * dist[c1,c2] * (movII[c1,c2] + movIII[c1,c2]))
     );
 
-# Ograniczenia
+# --- Ograniczenia ---
 # Do c2 musimy przywieźć conajmniej tyle dzwigow I lub II zeby pokrywaly short
 s.t. short_movI{c2 in Cities}: sum{c1 in Cities} (movI[c1,c2] + movIII[c1,c2]) >= shortI[c2];
 # Do c2 musimy przywieźć conajmniej tyle dzwigow II zeby pokrywaly shortII

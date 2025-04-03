@@ -2,8 +2,10 @@
 
 data;
 
+# zbiór miast dla ułatwienia
 set Cities := opole brzeg nysa prudnik strzelce kozle raciborz;
 
+# ilość nadmiarówi braków w poszczególnych maistach
 param:           shortI  shortII     surpI   surpII  :=
     opole       0       2           7       0
     brzeg       10      0           0       1
@@ -14,6 +16,7 @@ param:           shortI  shortII     surpI   surpII  :=
     raciborz    0       1           0       0
 ;
 
+# odległości do miast sprawdzane w google maps
 param dist:
                 opole   brzeg   nysa    prudnik     strzelce    kozle   raciborz :=
     opole       0.0     44.0    58.5    52.1        33.0        46.2    78.2

@@ -14,17 +14,27 @@ param dzien_wf {g in grupy_wf} >= 0 integer;
 
 param pkt {g in grupy, z in zajecia} >= 0 integer;
 
+# --- zmienne decyzyjne ---
+# Zmienn wybranych zajęć
 var wybrane {g in grupy, z in zajecia} binary;
+# Wybrane zajęcia sportowe
 var wybrane_wf {grupy_wf} binary;
 
+# --- Funkcja kosztu ---
+# maksymalizuje punkty wygody wybrancyh zajęć
 maximize pkt_suma: sum {g in grupy, z in zajecia} (pkt[g, z] * wybrane[g, z]);
 
+# --- Ograniczenia ---
+# mkasymalnie jedna grupa wybrana na zjęcia
 s.t. jedna_grupa_na_kurs {z in zajecia}: sum {g in grupy} wybrane[g, z] = 1;
+#minimalnie jedne zajęcia sportowe
 s.t. min_jeden_trening: sum {g in grupy_wf} wybrane_wf[g] >= 1;
+#maksymalnie 4h ćwiczeń dziennie
 s.t. max_4h_dziennie {d in 1..5}: sum {g in grupy, z in zajecia : dzien[g, z] = d} (
     (czas_koniec[g,z] - czas_start[g,z]) * wybrane[g, z]
 ) <= 4;
 
+# zajęcia nie mogą na siebie nachodzić
 s.t. brak_nachodzenia {g1 in grupy, g2 in grupy, z1 in zajecia, z2 in zajecia :
     (g1 != g2 or z1 != z2) and
     dzien[g1, z1] = dzien[g2, z2] and
@@ -32,6 +42,7 @@ s.t. brak_nachodzenia {g1 in grupy, g2 in grupy, z1 in zajecia, z2 in zajecia :
     czas_start[g2, z2] <= czas_koniec[g1, z1] }:
         wybrane[g1, z1] + wybrane[g2, z2] <= 1;
 
+# wf nie może nachodzić na zajęcia
 s.t. brak_nachodzenia_wf {g in grupy, z in zajecia, g_wf in grupy_wf:
     dzien[g,z] = dzien_wf[g_wf] and (
         (
@@ -45,6 +56,7 @@ s.t. brak_nachodzenia_wf {g in grupy, z in zajecia, g_wf in grupy_wf:
     )}:
         wybrane[g,z] + wybrane_wf[g_wf] <= 1;
 
+# Wymagane 1h przerwy na obiad w stołówce otwartej tylko i wyłącznie 12-14
 s.t. przerwa_obiad {d in 1..5}:
     (sum {g in grupy, c in zajecia : dzien[g,c] = d and czas_start[g,c] < 12 and czas_koniec[g,c] <= 14} (czas_koniec[g,c] - 12) * wybrane[g,c])
     + (sum {g in grupy, c in zajecia : dzien[g,c] = d and czas_start[g,c] >= 12 and czas_koniec[g,c] <= 14} (czas_koniec[g,c] - czas_start[g,c]) * wybrane[g,c])

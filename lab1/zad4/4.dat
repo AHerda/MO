@@ -2,22 +2,26 @@
 
 data;
 
+# Zbiór zajęć i grup dla ułatwienia
 set zajecia := alg ana fiz min org;
 set grupy := gr1 gr2 gr3 gr4;
 set grupy_wf := gr1 gr2 gr3;
 
+# Godziny rozpoczeć pszczególnych zajęć
 param czas_start :  alg ana fiz min org :=
             gr1     13  13  8   8   9
             gr2     10  10  10  8   10.5
             gr3     10  11  15  13  11
             gr4     11  8   17  13  13
 ;
+# Godziny zakończeń poszególnych zajęć
 param czas_koniec:  alg ana fiz min org :=
             gr1     15  15  11  10  10.5
             gr2     12  12  13  10  12
             gr3     12  13  18  15  12.5
             gr4     13  10  20  15  14.5
 ;
+# Dni odbywania się zajęć
 param dzien:    alg ana fiz min org :=
             gr1 1   1   2   1   1
             gr2 2   2   2   1   1
@@ -25,6 +29,7 @@ param dzien:    alg ana fiz min org :=
             gr4 3   4   4   5   5
 ;
 
+# punkty wygody poszególnych zajęć
 param pkt:  alg ana fiz min org :=
         gr1 5   4   3   10  0
         gr2 4   4   5   10  5
@@ -32,6 +37,7 @@ param pkt:  alg ana fiz min org :=
         gr4 5   6   8   5   4
 ;
 
+# czas startu końca i dni odbywania się treningów
 param czas_start_wf :=
         gr1 13
         gr2 11
