@@ -5,7 +5,7 @@ using JuMP, Cbc
 # Wczytanie danych
 include("data4.jl")
 
-T_max = sum(T)
+T_max = sum(T) + 1
 
 # Model
 model = Model(Cbc.Optimizer)

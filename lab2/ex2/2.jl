@@ -17,7 +17,7 @@ model = Model(Cbc.Optimizer)
 # Każde zadanie wykonywane jest dokładnie raz
 @constraint(model, [n in 1:N], sum(C[n, :]) == 1)
 # Rozpoczynanie zadań najwcześniej w czasie zapisanym w R
-@constraint(model, [n in 1:N], sum((t - 1) * C[n, t] for t in 1:T) + 1 - P[n] >= R[n])
+@constraint(model, [n in 1:N], sum((t - P[n]) * C[n, t] for t in 1:T) >= R[n])
 # Zadania nie mogą na siebie nachodzić
 @constraint(model, [t in 1:T], sum(C[n,s] for n in 1:N, s in t:min(T, t - 1 + P[n])) <= 1)
 

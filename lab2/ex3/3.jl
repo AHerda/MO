@@ -16,11 +16,11 @@ model = Model(Cbc.Optimizer)
 
 # Ograniczenia
 # Każde zadanie musi być zakończone przed C_max
-@constraint(model, [n in 1:N, m in 1:M], sum(t * x[n, t, m] for t in 1:T) - 1 + P[n] <= C_max)
+@constraint(model, [n in 1:N, m in 1:M], sum((t - 1 + P[n]) * x[n, t, m] for t in 1:T) <= C_max)
 # Zadania są wykonywane dokładnie raz
 @constraint(model, [n in 1:N], sum(x[n, t, m] for t in 1:T, m in 1:M) == 1)
 # Warunki poprzedzania muszą być spełnione
-@constraint(model, [(i, j) in R], sum(t * x[i, t, m] for t in 1:T, m in 1:M) + P[i] <= sum(t * x[j, t, m] for t in 1:T, m in 1:M))
+@constraint(model, [(i, j) in R], sum((t + P[i]) * x[i, t, m] for t in 1:T, m in 1:M) <= sum(t * x[j, t, m] for t in 1:T, m in 1:M))
 # Zadania nie mogą na siebie nachodzić
 @constraint(model, [t in 1:T, m in 1:M], sum(x[n, t2, m] for n in 1:N, t2 in max(1, t + 1 - P[n]):t) <= 1)
 
@@ -50,7 +50,7 @@ println("\t   | 0123456789")
 println("========================")
 for m in 1:M
     print("\tM", m, " | ")
-    for t in 1:Int(value(C_max))
+    for t in 1:round(Int, value(C_max))
         ch = "."
         for n in 1:N
             if sum(x[n, max(1, t + 1 - P[n]):t, m]) > 0.5

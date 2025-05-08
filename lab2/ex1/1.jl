@@ -43,16 +43,17 @@ model = Model(Cbc.Optimizer)
 @variable(model, x[1:length(all_possible)] >= 0, Int)
 
 # Ograniczenie dotyczące zaspokojenia popytu dla każdego z typów szerokości
-@constraint(model, [i in eachindex(widths)], sum(x[j] * all_possible[j][i] for j in eachindex(all_possible)) == demand[i])
+@constraint(model, [i in eachindex(widths)], sum(x[j] * all_possible[j][i] for j in eachindex(all_possible)) >= demand[i])
 
 # Funckaj celu minimalizująca resztki po cięciach desek
-@objective(model, Min, sum(x[i] * all_possible[i][end] for i in eachindex(all_possible)))
+@objective(model, Min, sum(x))
 
 # Rozwiązanie problemu
 optimize!(model)
 
 # Wyświetlenie wyników
 println("Funkcja celu: ", objective_value(model))
+println("Ilość resztek: ", sum(value.(x)) * std_width - sum(demand .* widths))
 println("Ilość wyciętych wzorów: ")
 for p in eachindex(all_possible)
     xp = value(x[p])
