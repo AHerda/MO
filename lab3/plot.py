@@ -8,7 +8,7 @@ def main():
     plots_dir = "plots/"
 
     # Load the results
-    df = pd.read_csv("results2.csv")
+    df = pd.read_csv("results.csv")
 
     # ---- Print basic numeric summaries ----
     print("\n=== Summary Statistics ===\n")

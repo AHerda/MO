@@ -41,19 +41,19 @@ function is_solvable(p::Matrix{Float64}, T::Int64)
     model = Model(HiGHS.Optimizer)
 
     blocked = [(i, j) for i in 1:n, j in 1:m if p[i, j] > T]
+    available_machines = [[j for j in 1:m if p[i, j] <= T] for i in 1:n]
+    available_jobs = [[i for i in 1:n if p[i, j] <= T] for j in 1:m]
 
     # Zmeinna decyzyjna, przyjumje wartość 1 gdy i-te zadanie jest przydzielone do j-tej maszyny
     @variable(model, x[1:n, 1:m] >= 0)
 
     # Ograniczenia
-    # Kazde zadanie musi być wykonywalne w czasie T_star
-    @constraint(model, [i in 1:n], minimum(p[i, :]) <= T)
     # Nie możemy przydzielić zadania do maszyny, jeśli jego czas przekracza T
     @constraint(model, [(i, j) in blocked], x[i, j] == 0)
     # Kazde zadanie musi być przydzielone do jednej maszyny
-    @constraint(model, [i in 1:n], sum(x[i, j] for j in 1:m) == 1)
+    @constraint(model, [i in 1:n], sum(x[i, j] for j in available_machines[i]) == 1)
     # Maszyna pracuje przez co najwyżej T jednostek czasu a jej czas pracy to suma czasów zadań przydzielonych do niej
-    @constraint(model, [j in 1:m], sum(x[i, j] * p[i, j] for i in 1:n) <= T)
+    @constraint(model, [j in 1:m], sum(x[i, j] * p[i, j] for i in available_jobs[j]) <= T)
 
     set_silent(model)
     optimize!(model)
@@ -147,6 +147,177 @@ function refine_x2(x::Matrix{Float64}, p::Matrix{Float64})
     return x_new2, Cmax
 end
 
+function refine_x(x::Matrix{Float64}, p::Matrix{Float64}, tol::Float64 = eps(Float64))
+    n, m = size(p)
+
+    # (a) Assign jobs that are already integral in the LP solution.
+    # For each job, if the largest x[i, j] is at least 1-tol, treat as integral.
+    assign = zeros(Int, n)   # assign[i] = assigned machine for job i (0 if not yet assigned)
+    fractional = Int[]       # List of jobs that are not integrally assigned
+    for i in 1:n
+        maxval, jmax = findmax(x[i, :])
+        if maxval ≥ 1 - tol
+            # This job is essentially integrally assigned to machine jmax
+            assign[i] = jmax
+        else
+            # This job is fractionally assigned (needs rounding)
+            push!(fractional, i)
+        end
+    end
+
+    # (b) Build the bipartite graph H for fractional jobs and their possible machines.
+    # H_i2j: For each fractional job, list of adjacent machines (where x[i, j] > tol)
+    # H_j2i: For each machine, list of adjacent fractional jobs
+    H_i2j = Dict{Int, Vector{Int}}()
+    H_j2i = Dict{Int, Vector{Int}}(j => Int[] for j in 1:m)
+    for i in fractional
+        nbrs = Int[]
+        for j in 1:m
+            if x[i, j] > tol
+                push!(nbrs, j)
+            end
+        end
+        # If due to numerical issues there are no neighbors, force-add the largest x[i, j]
+        if isempty(nbrs)
+            _, jmax = findmax(x[i, :])
+            push!(nbrs, jmax)
+        end
+        H_i2j[i] = nbrs
+        for j in nbrs
+            push!(H_j2i[j], i)
+        end
+    end
+
+    # Track which jobs and machines are still "alive" (not matched yet)
+    alive_job     = Dict(i => true for i in fractional)  # Only fractional jobs
+    alive_machine = Dict(j => !isempty(H_j2i[j]) for j in 1:m)
+    degree_m      = Dict(j => length(H_j2i[j]) for j in 1:m)
+
+    # (c) Leaf-stripping: iteratively match jobs to machines with degree 1
+    # Find all machines that are adjacent to exactly one fractional job
+    leaf_q = Int[]
+    for j in 1:m
+        if alive_machine[j] && degree_m[j] == 1
+            push!(leaf_q, j)
+        end
+    end
+
+    matched_pairs = Dict{Int, Int}()  # job → machine
+
+    while !isempty(leaf_q)
+        j_leaf = pop!(leaf_q)
+        # Skip if this machine is no longer alive or its degree changed
+        if !alive_machine[j_leaf] || degree_m[j_leaf] != 1
+            continue
+        end
+
+        # Find the only alive job adjacent to this machine
+        i_nbrs = [ i for i in H_j2i[j_leaf] if alive_job[i] ]
+        @assert length(i_nbrs) == 1 "Machine $j_leaf should have exactly one live neighbor"
+        i0 = i_nbrs[1]
+
+        # Match this job to this machine
+        matched_pairs[i0]       = j_leaf
+        alive_job[i0]           = false
+        alive_machine[j_leaf]   = false
+
+        # Remove this job from all other machines' adjacency lists
+        for j2 in H_i2j[i0]
+            if alive_machine[j2]
+                filter!(ii -> ii != i0, H_j2i[j2])
+                degree_m[j2] = length(H_j2i[j2])
+                if degree_m[j2] == 1
+                    push!(leaf_q, j2)
+                end
+            end
+        end
+
+        # Remove all edges for this job and machine
+        H_i2j[i0]     = Int[]
+        H_j2i[j_leaf] = Int[]
+    end
+
+    # (d) Cycle-matching: handle remaining unmatched jobs/machines (cycles in the bipartite graph)
+    visited_job     = Dict(i => false for i in fractional)
+    visited_machine = Dict(j => false for j in 1:m)
+
+    for i_start in fractional
+        if !alive_job[i_start] || visited_job[i_start]
+            continue
+        end
+
+        cycle_nodes = Int[]   # Alternating sequence: job, machine, job, machine, ...
+        current_i   = i_start
+
+        # Start from a job, find an alive neighbor machine
+        alive_nbrs = [ j for j in H_i2j[current_i] if alive_machine[j] ]
+        if isempty(alive_nbrs)
+            visited_job[current_i] = true
+            continue
+        end
+        j_next = alive_nbrs[1]
+
+        # Traverse the cycle, alternating between jobs and machines
+        while true
+            push!(cycle_nodes, current_i)
+            push!(cycle_nodes, j_next)
+            visited_job[current_i]     = true
+            visited_machine[j_next]    = true
+
+            # Find next alive job neighbor of this machine
+            next_jobs = [ i2 for i2 in H_j2i[j_next] if alive_job[i2] && !visited_job[i2] ]
+            if isempty(next_jobs)
+                break
+            end
+            current_i = next_jobs[1]
+
+            # Find next alive machine neighbor of this job
+            next_machs = [ j2 for j2 in H_i2j[current_i] if alive_machine[j2] && !visited_machine[j2] ]
+            if isempty(next_machs)
+                break
+            end
+            j_next = next_machs[1]
+        end
+
+        # Assign every other node in the cycle (job → machine)
+        # This guarantees a perfect matching for the cycle component
+        for idx in 1:2:length(cycle_nodes)
+            i_cycle = cycle_nodes[idx]
+            j_cycle = cycle_nodes[idx + 1]
+            matched_pairs[i_cycle]     = j_cycle
+            alive_job[i_cycle]         = false
+            alive_machine[j_cycle]     = false
+        end
+    end
+
+    # Assign matched fractional jobs to their matched machines
+    for (i, j) in matched_pairs
+        assign[i] = j
+    end
+
+    # (e) Fallback: Any job still unassigned (shouldn't happen, but for safety)
+    # Assign to its fastest available machine
+    for i in 1:n
+        if assign[i] == 0
+            _, jmin = findmin(p[i, :])
+            assign[i] = jmin
+        end
+    end
+
+    # (f) Build the final assignment matrix and compute machine loads
+    x_final = zeros(Int, n, m)
+    loads   = zeros(Float64, m)
+    for i in 1:n
+        j_assigned = assign[i]
+        x_final[i, j_assigned] = 1
+        loads[j_assigned]     += p[i, j_assigned]
+    end
+
+    # (g) Compute makespan (maximum load over all machines)
+    Cmax = maximum(loads)
+    return x_final, Cmax
+end
+
 function check_solution(x::Matrix{Int64}, p::Matrix{Float64}, T::Float64)
     n, m = size(p)
 
@@ -175,7 +346,7 @@ function process_file(filename::String)
     @assert(!isnothing(x), "Nie znaleziono rozwiązania")
     print("\t\tRefining solution $(T)")
     # x, T = refine_x(x, p, 1e-5)
-    x, T = refine_x2(x, p)
+    x, T = refine_x(x, p)
     println(" -> $(T)")
 
     is_valid, message = check_solution(x, p, T)
@@ -249,7 +420,7 @@ function main()
     last_good = "data/instancias100a200/1046.txt"
     idx = findfirst(filenames .== last_good)
 
-    @showprogress 1 "Solving" for filename in filenames[idx:idx]
+    @showprogress 1 "Solving" for filename in filenames#[idx:idx]
         println("Przetwarzanie pliku: ", filename)
         T_star, x = process_file(filename)
         n, m = size(x)
