@@ -150,24 +150,19 @@ end
 function refine_x(x::Matrix{Float64}, p::Matrix{Float64}, tol::Float64 = eps(Float64))
     n, m = size(p)
 
-    # (a) Assign jobs that are already integral in the LP solution.
-    # For each job, if the largest x[i, j] is at least 1-tol, treat as integral.
-    assign = zeros(Int, n)   # assign[i] = assigned machine for job i (0 if not yet assigned)
-    fractional = Int[]       # List of jobs that are not integrally assigned
+    assign = zeros(Int, n)
+    fractional = Int[]
     for i in 1:n
         maxval, jmax = findmax(x[i, :])
         if maxval ≥ 1 - tol
-            # This job is essentially integrally assigned to machine jmax
+
             assign[i] = jmax
         else
-            # This job is fractionally assigned (needs rounding)
+
             push!(fractional, i)
         end
     end
 
-    # (b) Build the bipartite graph H for fractional jobs and their possible machines.
-    # H_i2j: For each fractional job, list of adjacent machines (where x[i, j] > tol)
-    # H_j2i: For each machine, list of adjacent fractional jobs
     H_i2j = Dict{Int, Vector{Int}}()
     H_j2i = Dict{Int, Vector{Int}}(j => Int[] for j in 1:m)
     for i in fractional
@@ -177,7 +172,7 @@ function refine_x(x::Matrix{Float64}, p::Matrix{Float64}, tol::Float64 = eps(Flo
                 push!(nbrs, j)
             end
         end
-        # If due to numerical issues there are no neighbors, force-add the largest x[i, j]
+
         if isempty(nbrs)
             _, jmax = findmax(x[i, :])
             push!(nbrs, jmax)
@@ -188,13 +183,10 @@ function refine_x(x::Matrix{Float64}, p::Matrix{Float64}, tol::Float64 = eps(Flo
         end
     end
 
-    # Track which jobs and machines are still "alive" (not matched yet)
-    alive_job     = Dict(i => true for i in fractional)  # Only fractional jobs
+    alive_job     = Dict(i => true for i in fractional)
     alive_machine = Dict(j => !isempty(H_j2i[j]) for j in 1:m)
     degree_m      = Dict(j => length(H_j2i[j]) for j in 1:m)
 
-    # (c) Leaf-stripping: iteratively match jobs to machines with degree 1
-    # Find all machines that are adjacent to exactly one fractional job
     leaf_q = Int[]
     for j in 1:m
         if alive_machine[j] && degree_m[j] == 1
@@ -202,26 +194,23 @@ function refine_x(x::Matrix{Float64}, p::Matrix{Float64}, tol::Float64 = eps(Flo
         end
     end
 
-    matched_pairs = Dict{Int, Int}()  # job → machine
+    matched_pairs = Dict{Int, Int}()
 
     while !isempty(leaf_q)
         j_leaf = pop!(leaf_q)
-        # Skip if this machine is no longer alive or its degree changed
+
         if !alive_machine[j_leaf] || degree_m[j_leaf] != 1
             continue
         end
 
-        # Find the only alive job adjacent to this machine
         i_nbrs = [ i for i in H_j2i[j_leaf] if alive_job[i] ]
         @assert length(i_nbrs) == 1 "Machine $j_leaf should have exactly one live neighbor"
         i0 = i_nbrs[1]
 
-        # Match this job to this machine
         matched_pairs[i0]       = j_leaf
         alive_job[i0]           = false
         alive_machine[j_leaf]   = false
 
-        # Remove this job from all other machines' adjacency lists
         for j2 in H_i2j[i0]
             if alive_machine[j2]
                 filter!(ii -> ii != i0, H_j2i[j2])
@@ -232,12 +221,10 @@ function refine_x(x::Matrix{Float64}, p::Matrix{Float64}, tol::Float64 = eps(Flo
             end
         end
 
-        # Remove all edges for this job and machine
         H_i2j[i0]     = Int[]
         H_j2i[j_leaf] = Int[]
     end
 
-    # (d) Cycle-matching: handle remaining unmatched jobs/machines (cycles in the bipartite graph)
     visited_job     = Dict(i => false for i in fractional)
     visited_machine = Dict(j => false for j in 1:m)
 
@@ -246,10 +233,9 @@ function refine_x(x::Matrix{Float64}, p::Matrix{Float64}, tol::Float64 = eps(Flo
             continue
         end
 
-        cycle_nodes = Int[]   # Alternating sequence: job, machine, job, machine, ...
+        cycle_nodes = Int[]
         current_i   = i_start
 
-        # Start from a job, find an alive neighbor machine
         alive_nbrs = [ j for j in H_i2j[current_i] if alive_machine[j] ]
         if isempty(alive_nbrs)
             visited_job[current_i] = true
@@ -257,21 +243,18 @@ function refine_x(x::Matrix{Float64}, p::Matrix{Float64}, tol::Float64 = eps(Flo
         end
         j_next = alive_nbrs[1]
 
-        # Traverse the cycle, alternating between jobs and machines
         while true
             push!(cycle_nodes, current_i)
             push!(cycle_nodes, j_next)
             visited_job[current_i]     = true
             visited_machine[j_next]    = true
 
-            # Find next alive job neighbor of this machine
             next_jobs = [ i2 for i2 in H_j2i[j_next] if alive_job[i2] && !visited_job[i2] ]
             if isempty(next_jobs)
                 break
             end
             current_i = next_jobs[1]
 
-            # Find next alive machine neighbor of this job
             next_machs = [ j2 for j2 in H_i2j[current_i] if alive_machine[j2] && !visited_machine[j2] ]
             if isempty(next_machs)
                 break
@@ -279,8 +262,6 @@ function refine_x(x::Matrix{Float64}, p::Matrix{Float64}, tol::Float64 = eps(Flo
             j_next = next_machs[1]
         end
 
-        # Assign every other node in the cycle (job → machine)
-        # This guarantees a perfect matching for the cycle component
         for idx in 1:2:length(cycle_nodes)
             i_cycle = cycle_nodes[idx]
             j_cycle = cycle_nodes[idx + 1]
@@ -290,13 +271,10 @@ function refine_x(x::Matrix{Float64}, p::Matrix{Float64}, tol::Float64 = eps(Flo
         end
     end
 
-    # Assign matched fractional jobs to their matched machines
     for (i, j) in matched_pairs
         assign[i] = j
     end
 
-    # (e) Fallback: Any job still unassigned (shouldn't happen, but for safety)
-    # Assign to its fastest available machine
     for i in 1:n
         if assign[i] == 0
             _, jmin = findmin(p[i, :])
@@ -304,7 +282,6 @@ function refine_x(x::Matrix{Float64}, p::Matrix{Float64}, tol::Float64 = eps(Flo
         end
     end
 
-    # (f) Build the final assignment matrix and compute machine loads
     x_final = zeros(Int, n, m)
     loads   = zeros(Float64, m)
     for i in 1:n
@@ -313,7 +290,6 @@ function refine_x(x::Matrix{Float64}, p::Matrix{Float64}, tol::Float64 = eps(Flo
         loads[j_assigned]     += p[i, j_assigned]
     end
 
-    # (g) Compute makespan (maximum load over all machines)
     Cmax = maximum(loads)
     return x_final, Cmax
 end

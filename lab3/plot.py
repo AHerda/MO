@@ -27,14 +27,22 @@ def main():
     sns.set_theme(style="whitegrid", context="talk")
 
     # --- Plot 1: Approximation Ratio by Family (Boxplot) ---
+    avg_ratio_by_family = df.groupby("subfolder")["ratio_lp"].mean().reset_index()
+    max_ratio_by_family = df.groupby("subfolder")["ratio_lp"].max().reset_index()
+
+    print("\nAverage ratio_lp by family:")
+    print(avg_ratio_by_family.to_string(index=False))
+
+    print("\nMaximum ratio_lp by family:")
+    print(max_ratio_by_family.to_string(index=False))
     plt.figure(figsize=(10, 6))
     ax = sns.boxplot(
         x="subfolder", y="ratio_lp", data=df,
         palette="Set2", showfliers=False
     )
-    ax.set_title("Approximation Ratio (Cmax / LP) by Instance Family")
-    ax.set_xlabel("Instance Family")
-    ax.set_ylabel("Approximation Ratio")
+    ax.set_title("Współczynnik aproksymacji względem rodziny isntancji")
+    ax.set_xlabel("Rodzina instancji")
+    ax.set_ylabel("Współczynnik aproksymacji")
     plt.xticks(rotation=45, ha="right")
     plt.tight_layout()
     plt.savefig(plots_dir + "ratio_boxplot_by_family.png", dpi=300)
@@ -51,15 +59,30 @@ def main():
     plt.close()
 
     # --- Plot 3: Ratio vs. Number of Jobs ---
+    # --- Table: Average ratio_lp by number of jobs ---
+    avg_ratio_by_jobs = df.groupby("jobs")["ratio_lp"].mean().reset_index()
+    max_ratio_by_jobs = df.groupby("jobs")["ratio_lp"].max().reset_index()
+
+    print("\nAverage ratio_lp by number of jobs:")
+    print(avg_ratio_by_jobs.to_string(index=False))
+
+    print("\nMaximum ratio_lp by number of jobs:")
+    print(max_ratio_by_jobs.to_string(index=False))
+
+    # Add average line to the scatter plot
     plt.figure(figsize=(10, 6))
+    ax_avg = sns.lineplot(
+        x="jobs", y="ratio_lp", data=avg_ratio_by_jobs,
+        color="black", marker="o", label="Średni współczynnik"
+    )
     ax = sns.scatterplot(
         x="jobs", y="ratio_lp", hue="subfolder",
         data=df, palette="tab10", alpha=0.85
     )
-    ax.set_title("Approximation Ratio vs. Number of Jobs")
-    ax.set_xlabel("Number of Jobs (n)")
-    ax.set_ylabel("Approximation Ratio")
-    plt.legend(title="Family", bbox_to_anchor=(1.05, 1), loc="upper left")
+    ax.set_title("Współczynnik aproksymacji względem liczby zadań")
+    ax.set_xlabel("Liczba zadań")
+    ax.set_ylabel("Współczynnik aproksymacji")
+    plt.legend(title="Rodzina instancji", bbox_to_anchor=(1.05, 1), loc="upper left")
     plt.tight_layout()
     plt.savefig(plots_dir + "ratio_vs_n_scatter.png", dpi=300)
     plt.close()
